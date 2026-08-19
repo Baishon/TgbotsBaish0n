@@ -8,6 +8,11 @@ client = TelegramClient("my_session", api_id, api_hash)
 
 @client.on(events.NewMessage(pattern=r"^\.test$"))
 async def test(event):
+    # Проверка: реагируем только на сообщения от владельца аккаунта
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return
+    
     await event.edit("Done! Вы являетесь девственником уже 67 лет.")
 
 
