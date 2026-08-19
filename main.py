@@ -2,6 +2,8 @@ from telethon import TelegramClient, events
 from datetime import datetime
 import pytz
 import asyncio
+import sys
+import signal
 
 api_id = 38433332
 api_hash = "96e2e580a0ff590253237b27b089c728"
@@ -20,35 +22,33 @@ def get_kyiv_time():
     return datetime.now(KYIV_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
-@client.on(events.NewMessage(incoming=True))
-async def startup_handler(event):
-    """Обработчик для различных команд"""
-    pass
-
-
 async def startup():
     """Функция, выполняемая при запуске бота"""
-    await client.start()
-    
     # Отправляем сообщение о запуске
     startup_time = get_kyiv_time()
-    await client.send_message(
-        OWNER_ID,
-        f"The bot has been successfully launched and is running in the background. Date: {startup_time}"
-    )
-    print(f"✅ Bot started at {startup_time}")
+    try:
+        await client.send_message(
+            OWNER_ID,
+            f"The bot has been successfully launched and is running in the background. Date: {startup_time}"
+        )
+        print(f"✅ Bot started at {startup_time}")
+    except Exception as e:
+        print(f"⚠️ Не удалось отправить сообщение о запуске: {e}")
 
 
 async def shutdown():
     """Функция, выполняемая при остановке бота"""
     shutdown_time = get_kyiv_time()
     
-    # Отправляем сообщение об остановке
-    await client.send_message(
-        OWNER_ID,
-        f"The bot is finishing its work. Data: {shutdown_time}"
-    )
-    print(f"⏹️ Bot stopped at {shutdown_time}")
+    try:
+        # Отправляем сообщение об остановке
+        await client.send_message(
+            OWNER_ID,
+            f"The bot is finishing its work. Data: {shutdown_time}"
+        )
+        print(f"⏹️ Bot stopped at {shutdown_time}")
+    except Exception as e:
+        print(f"⚠️ Не удалось отправить сообщение об остановке: {e}")
     
     await client.disconnect()
 
@@ -56,11 +56,12 @@ async def shutdown():
 async def main():
     """Главная функция"""
     try:
+        await client.start()
         await startup()
         
         # Запускаем бота в режиме ожидания входящих сообщений
-        async with client:
-            await client.run_until_disconnected()
+        print("🤖 Бот запущен и ожидает команд...")
+        await client.run_until_disconnected()
     
     except KeyboardInterrupt:
         print("\n🛑 Скрипт прерван пользователем")
@@ -71,4 +72,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n✋ Выход...")
