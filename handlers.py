@@ -21,8 +21,7 @@ def register_handlers(client_instance):
     @client_instance.on(events.NewMessage(pattern=r"^\.test$"))
     async def test_handler(event):
         """Команда .test"""
-        me = await client_instance.get_me()
-        if event.sender_id != me.id:
+        if event.sender_id != OWNER_ID:
             return
         
         await event.edit("Done! Вы являетесь девственником уже 67 лет.")
@@ -33,12 +32,10 @@ def register_handlers(client_instance):
         """Команда для сохранения информации о профиле"""
         
         print(f"🔍 DEBUG: Получена команда: {event.text}")
+        print(f"🔍 DEBUG: ID отправителя: {event.sender_id}, Ожидаемый ID: {OWNER_ID}")
         
         # Проверка: команда работает только от владельца
-        me = await client_instance.get_me()
-        print(f"🔍 DEBUG: Мой ID: {me.id}, ID отправителя: {event.sender_id}")
-        
-        if event.sender_id != me.id:
+        if event.sender_id != OWNER_ID:
             print(f"🔍 DEBUG: Отправитель не совпадает с владельцем")
             return
         
