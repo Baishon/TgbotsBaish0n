@@ -12,7 +12,7 @@ client = TelegramClient("my_session", api_id, api_hash)
 OWNER_ID = 7545068007
 
 # Путь для сохранения
-SAVE_PATH = "/sdcard/Documents/KMBP"
+SAVE_PATH = "/storage/emulated/0/Documents/KMBP"
 
 
 def register_handlers(client_instance):
