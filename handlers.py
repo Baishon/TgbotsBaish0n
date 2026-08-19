@@ -28,13 +28,18 @@ def register_handlers(client_instance):
         await event.edit("Done! Вы являетесь девственником уже 67 лет.")
     
     
-    @client_instance.on(events.NewMessage(pattern=r"^\.savelog(?:\s+(\d+))?$"))
+    @client_instance.on(events.NewMessage(pattern=r"^\.savelog"))
     async def savelog_handler(event):
         """Команда для сохранения информации о профиле"""
         
+        print(f"🔍 DEBUG: Получена команда: {event.text}")
+        
         # Проверка: команда работает только от владельца
         me = await client_instance.get_me()
+        print(f"🔍 DEBUG: Мой ID: {me.id}, ID отправителя: {event.sender_id}")
+        
         if event.sender_id != me.id:
+            print(f"🔍 DEBUG: Отправитель не совпадает с владельцем")
             return
         
         try:
@@ -42,21 +47,30 @@ def register_handlers(client_instance):
             
             # Проверяем, есть ли реплай
             if event.reply_to_msg_id:
+                print(f"🔍 DEBUG: Обнаружен реплай")
                 reply_msg = await event.get_reply_message()
                 user_id = reply_msg.sender_id
+                print(f"🔍 DEBUG: ID из реплая: {user_id}")
             else:
                 # Ищем ID в самой команде
-                match = re.search(r"^\.savelog\s+(\d+)", event.text)
+                print(f"🔍 DEBUG: Ищем ID в команде")
+                match = re.search(r"\.savelog\s+(\d+)", event.text)
                 if match:
                     user_id = int(match.group(1))
+                    print(f"🔍 DEBUG: ID из команды: {user_id}")
             
             if not user_id:
+                print(f"🔍 DEBUG: ID не найден")
                 await event.reply("❌ Укажите ID или сделайте реплай на сообщение пользователя")
                 return
+            
+            print(f"🔍 DEBUG: Начинаем сохранение для ID: {user_id}")
             
             # Получаем полную информацию о пользователе
             user_full = await client_instance(GetFullUserRequest(user_id))
             user = user_full.user
+            
+            print(f"🔍 DEBUG: Получена информация о пользователе")
             
             # Извлекаем информацию
             user_id_profile = user.id
@@ -68,9 +82,13 @@ def register_handlers(client_instance):
             username = user.username or "Не указан"
             number_user = user.phone or "Не отображен"
             
+            print(f"🔍 DEBUG: username={username}, nick={nick_username}, phone={number_user}")
+            
             # Создаём директорию
             folder_name = username if username != "Не указан" else f"user_{user_id_profile}"
             folder_path = os.path.join(SAVE_PATH, folder_name)
+            
+            print(f"🔍 DEBUG: Создаю папку: {folder_path}")
             os.makedirs(folder_path, exist_ok=True)
             
             # Скачиваем аватарки
@@ -79,12 +97,14 @@ def register_handlers(client_instance):
             
             photo_count = 0
             try:
+                print(f"🔍 DEBUG: Начинаю скачивать аватарки")
                 async for photo in client_instance.iter_profile_photos(user_id):
                     photo_path = os.path.join(photos_dir, f"avatar_{photo_count}.jpg")
                     await client_instance.download_media(photo, photo_path)
                     photo_count += 1
-            except:
-                pass  # Если аватарок нет или они закрыты
+                    print(f"🔍 DEBUG: Скачана аватарка #{photo_count}")
+            except Exception as photo_error:
+                print(f"🔍 DEBUG: Ошибка при скачивании аватарок: {photo_error}")
             
             # Создаём файл log.txt
             log_content = f"""╔═══《 РАЗНОС КМБП 》═══╗
@@ -104,6 +124,8 @@ ID: {user_id_profile}
             with open(log_file_path, "w", encoding="utf-8") as f:
                 f.write(log_content)
             
+            print(f"🔍 DEBUG: Создан файл log.txt")
+            
             # Отправляем подтверждение
             await event.reply(f"Done! Данные сохранены в Documents/KMBP/{folder_name}")
             
@@ -111,5 +133,7 @@ ID: {user_id_profile}
             print(f"📸 Скачано аватарок: {photo_count}")
         
         except Exception as e:
+            print(f"❌ ОШИБКА: {str(e)}")
+            import traceback
+            traceback.print_exc()
             await event.reply(f"❌ Ошибка: {str(e)}")
-            print(f"Ошибка при сохранении профиля: {e}")
