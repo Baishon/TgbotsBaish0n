@@ -2,8 +2,7 @@ from telethon import TelegramClient, events
 from datetime import datetime
 import pytz
 import asyncio
-import sys
-import signal
+from handlers import register_handlers
 
 api_id = 38433332
 api_hash = "96e2e580a0ff590253237b27b089c728"
@@ -57,6 +56,10 @@ async def main():
     """Главная функция"""
     try:
         await client.start()
+        
+        # Регистрируем обработчики команд
+        register_handlers(client)
+        
         await startup()
         
         # Запускаем бота в режиме ожидания входящих сообщений
