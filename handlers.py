@@ -46,7 +46,7 @@ def register_handlers(client_instance):
                 user_id = reply_msg.sender_id
             else:
                 # Ищем ID в самой команде
-                match = re.search(r"\.savelog\s+(\d+)", event.text)
+                match = re.search(r"^\.savelog\s+(\d+)", event.text)
                 if match:
                     user_id = int(match.group(1))
             
