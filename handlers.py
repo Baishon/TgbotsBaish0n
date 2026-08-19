@@ -65,7 +65,7 @@ def register_handlers(client_instance):
             
             # Получаем полную информацию о пользователе
             user_full = await client_instance(GetFullUserRequest(user_id))
-            user = user_full.user
+            user = user_full.users[0]
             
             print(f"🔍 DEBUG: Получена информация о пользователе")
             
