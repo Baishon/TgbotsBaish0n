@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.functions.messages import GetHistoryRequest
-from telethon.errors import ChatAdminRequiredError, ChannelPrivateError
+from telethon.errors import ChatAdminRequiredError, ChannelPrivateError, UserPrivacyRestrictedError
 import os
 import re
 import random
@@ -210,88 +210,64 @@ ID: {user_id_profile}
         try:
             args = event.pattern_match.group(1) if event.pattern_match.group(1) else None
             
+            print(f"🔍 DEBUG .prikol: args={args}, reply_to={event.reply_to_msg_id}")
+            
+            prikol = get_random_prikol()
+            
+            if not prikol:
+                await event.reply("❌ Приколов не найдено")
+                return
+            
             # Если есть параметры (ID/URL)
             if args:
                 print(f"🔍 DEBUG .prikol: Параметры: {args}")
                 
-                # Парсим ID или URL
                 user_id = None
-                message_id = None
-                chat_id = None
+                message_link = None
                 
-                if args.isdigit():
+                # Проверяем если это URL
+                if "t.me" in args or "/" in args:
+                    print(f"🔍 DEBUG .prikol: Это выглядит как URL")
+                    message_link = args
+                elif args.isdigit():
                     user_id = int(args)
-                else:
-                    # Пытаемся парсить URL (t.me/...)
-                    url_match = re.search(r"t\.me/(\w+)/(\d+)", args)
-                    if url_match:
-                        username = url_match.group(1)
-                        message_id = int(url_match.group(2))
-                        
-                        # Получаем chat_id по username
-                        try:
-                            entity = await client_instance.get_entity(username)
-                            chat_id = entity.id
-                        except:
-                            await client_instance.send_message(
-                                OWNER_ID,
-                                f"❌ Не найден чат с username: {username}"
-                            )
-                            return
-                
-                prikol = get_random_prikol()
-                
-                if not prikol:
-                    await client_instance.send_message(
-                        OWNER_ID,
-                        "❌ Приколов не найдено в базе данных"
-                    )
-                    return
+                    print(f"🔍 DEBUG .prikol: ID пользователя: {user_id}")
                 
                 try:
-                    # Отправляем прикол в ЛС пользователю
                     if user_id:
+                        # Отправляем прикол в ЛС
                         await client_instance.send_message(
                             user_id,
                             prikol["text"]
                         )
                         
-                        # Отправляем изображения если есть
                         for img in prikol["images"]:
                             await client_instance.send_file(user_id, img)
-                    
-                    # Или реплаим на сообщение
-                    elif message_id and chat_id:
-                        await client_instance.send_message(
-                            chat_id,
-                            prikol["text"],
-                            reply_to=message_id
-                        )
                         
-                        for img in prikol["images"]:
-                            await client_instance.send_file(
-                                chat_id,
-                                img,
-                                reply_to=message_id
-                            )
+                        print(f"✅ Прикол отправлен пользователю {user_id}")
                     
-                    print(f"✅ Прикол отправлен")
+                    elif message_link:
+                        # Парсим ссылку на сообщение
+                        # Формат: t.me/username/message_id или t.me/c/chat_id/message_id
+                        await client_instance.send_message(
+                            OWNER_ID,
+                            f"❌ URL отправка пока не поддерживается. Используйте реплай вместо этого."
+                        )
                 
-                except (ChatAdminRequiredError, ChannelPrivateError) as e:
+                except UserPrivacyRestrictedError:
                     await client_instance.send_message(
                         OWNER_ID,
-                        f"❌ Нет доступа к чату/каналу: {str(e)}"
+                        f"❌ Нет доступа к пользователю {user_id} (приватные сообщения закрыты)"
+                    )
+                except Exception as e:
+                    await client_instance.send_message(
+                        OWNER_ID,
+                        f"❌ Ошибка при отправке приколов: {str(e)}"
                     )
             
             # Если реплай на сообщение
             elif event.reply_to_msg_id:
-                reply_msg = await event.get_reply_message()
-                
-                prikol = get_random_prikol()
-                
-                if not prikol:
-                    await event.reply("❌ Приколов не найдено")
-                    return
+                print(f"🔍 DEBUG .prikol: Обнаружен реплай на сообщение")
                 
                 try:
                     await event.reply(prikol["text"])
@@ -300,22 +276,26 @@ ID: {user_id_profile}
                         await client_instance.send_file(
                             event.chat_id,
                             img,
-                            reply_to=reply_msg.id
+                            reply_to=event.reply_to_msg_id
                         )
                     
                     print(f"✅ Прикол отправлен реплаем")
                 
                 except Exception as e:
+                    print(f"❌ Ошибка при отправке реплая: {e}")
                     await event.reply(f"❌ Ошибка: {str(e)}")
             
             else:
-                await event.reply("❌ Сделайте реплай или укажите ID/URL")
+                await event.reply("❌ Сделайте реплай на сообщение или укажите ID пользователя")
         
         except Exception as e:
             print(f"❌ ОШИБКА .prikol: {str(e)}")
             import traceback
             traceback.print_exc()
-            await client_instance.send_message(OWNER_ID, f"❌ Ошибка .prikol: {str(e)}")
+            try:
+                await client_instance.send_message(OWNER_ID, f"❌ Ошибка .prikol: {str(e)}")
+            except:
+                pass
     
     
     @client_instance.on(events.NewMessage(pattern=r"^\.addprikol$", incoming=True, func=lambda e: e.is_private))
